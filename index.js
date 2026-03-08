@@ -1,3 +1,7 @@
+import "dotenv/config";
+import { gotMessage } from "./commands.js";
+
+
 /* API 的連線規格與監聽行為 */
 import { Client, GatewayIntentBits, Partials } from 'discord.js';
 const client = new Client({
@@ -24,10 +28,6 @@ client.once('ready', () => {
     console.log(`✅ 機器人 ${client.user.username} 已上線！`);
 });
 
-
-/* programming header */
-import "dotenv/config";
-import {gotMessage} from"./commands.js";
 
 // 觸發訊息事件
 client.on("messageCreate", gotMessage);
