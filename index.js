@@ -35,4 +35,3 @@ client.on("messageCreate", gotMessage);
 
 // 機器人正式連接discord伺服器
 client.login(process.env.BOTTOKEN);
-

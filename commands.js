@@ -2,12 +2,16 @@ import { gif } from "./commands/gif.js";
 import { Lin } from "./commands/Lin.js";
 import { restart } from "./commands/restart.js";
 import { chat } from "./commands/chat.js";
+import { help } from "./commands/help.js";
+import { userInfo } from "./commands/userInfo.js";
 
 
 const commands = {
     Lin,
     gif,
     restart,
+    help,
+    userInfo,
 }
 
 export async function gotMessage(msg) {
@@ -32,7 +36,7 @@ export async function gotMessage(msg) {
 
         // 正式辨識指令類類並執行
         try {
-            if (command.charAt(0) === "!") {
+            if (command.charAt(0) === ">") {
                 command = command.substring(1);
                 commands[command](msg, tokens);
             } else {

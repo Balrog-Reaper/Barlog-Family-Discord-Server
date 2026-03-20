@@ -1,11 +1,9 @@
 
-
-
 // 機器人search GIF
-export async function gif(msg, args){
+export async function gif(msg, args) {
     // search GIF 的關鍵詞
     let keywords = "Barlog"
-    if(args.length > 0){
+    if (args.length > 0) {
         keywords = args.join(" ");
     }
 
