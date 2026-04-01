@@ -14,12 +14,12 @@
  * 資料結構路徑：
  *   loc.weatherElement[].elementName → time[0].parameter.parameterName
  * 
- * @param {Object} loc - 單一縣市的 location 物件
+ * @param {Object} location - 單一縣市的 location 物件
  * @param {string} elementName - 欄位名稱（如 "Wx", "MaxT", "MinT", "PoP", "CI"）
  * @returns {string} 該欄位的值，找不到則回傳 "—"
  */
-function getOverviewValue(loc, elementName) {
-    const element = loc.weatherElement.find(e => e.elementName === elementName);
+function getOverviewValue(location, elementName) {
+    const element = location.weatherElement.find(e => e.elementName === elementName);
     if (!element || !element.time || !element.time[0]) return "—";
     return element.time[0].parameter.parameterName || "—";
 }
@@ -31,7 +31,7 @@ function getOverviewValue(loc, elementName) {
  * ⚠️ 注意：這個 API 的 ElementName 使用「中文名稱」，不是英文代碼！
  * 
  * 資料結構路徑：
- *   WeatherElement[].ElementName（中文）→ Time[0].ElementValue[0][valueKey]
+ *   location.WeatherElement[].ElementName（中文）→ Time[0].ElementValue[0][valueKey]
  * 
  * 常用對照表：
  *   "平均溫度"       → valueKey: "Temperature"
@@ -47,13 +47,13 @@ function getOverviewValue(loc, elementName) {
  *   "天氣現象"       → valueKey: "Weather"
  *   "天氣預報綜合描述" → valueKey: "WeatherDescription"
  * 
- * @param {Array} elements - WeatherElement 陣列
- * @param {string} chineseName - 中文欄位名稱
- * @param {string} valueKey - ElementValue 物件中的 key
+ * @param {Object} location - 單一縣市的 Location 物件
+ * @param {string} elementName - 中文欄位名稱（如 "最高溫度", "風速"）
+ * @param {string} valueKey - ElementValue 物件中的 key（如 "MaxTemperature"）
  * @returns {string} 該欄位的值，找不到則回傳 "—"
  */
-function getDetailValue(elements, chineseName, valueKey) {
-    const element = elements.find(e => e.ElementName === chineseName);
+function getDetailValue(location, elementName, valueKey) {
+    const element = location.WeatherElement.find(e => e.ElementName === elementName);
     if (!element || !element.Time || !element.Time[0]) return "—";
     const val = element.Time[0].ElementValue[0];
     return val[valueKey] || "—";
@@ -123,6 +123,7 @@ export async function fetchTaiwanDetailWeather(cityName) {
     const response = await fetch(url);
     const json = await response.json();
 
+
     if (json.success !== "true") {
         throw new Error("中央氣象署 API 回應失敗，請稍後再試。");
     }
@@ -135,28 +136,27 @@ export async function fetchTaiwanDetailWeather(cityName) {
         throw new Error(`找不到「${cityName}」的天氣資料。`);
     }
 
-    const elements = loc.WeatherElement;
-
     // 組合各項天氣數值
-    const maxAT = getDetailValue(elements, "最高體感溫度", "MaxApparentTemperature");
-    const minAT = getDetailValue(elements, "最低體感溫度", "MinApparentTemperature");
-    const windSpeed = getDetailValue(elements, "風速", "WindSpeed");
-    const beaufort = getDetailValue(elements, "風速", "BeaufortScale");
-    const rainProb = getDetailValue(elements, "12小時降雨機率", "ProbabilityOfPrecipitation");
+    const maxAT = getDetailValue(loc, "最高體感溫度", "MaxApparentTemperature");
+    const minAT = getDetailValue(loc, "最低體感溫度", "MinApparentTemperature");
+    const windSpeed = getDetailValue(loc, "風速", "WindSpeed");
+    const beaufort = getDetailValue(loc, "風速", "BeaufortScale");
+    const rainProb = getDetailValue(loc, "12小時降雨機率", "ProbabilityOfPrecipitation");
 
-    return {
+    const weatherList = [{
         locationName: loc.LocationName,
-        description: getDetailValue(elements, "天氣現象", "Weather"),
-        maxTemp: `${getDetailValue(elements, "最高溫度", "MaxTemperature")}°C`,
-        minTemp: `${getDetailValue(elements, "最低溫度", "MinTemperature")}°C`,
-        temperature: `${getDetailValue(elements, "平均溫度", "Temperature")}°C`,
+        description: getDetailValue(loc, "天氣現象", "Weather"),
+        maxTemp: `${getDetailValue(loc, "最高溫度", "MaxTemperature")}°C`,
+        minTemp: `${getDetailValue(loc, "最低溫度", "MinTemperature")}°C`,
+        temperature: `${getDetailValue(loc, "平均溫度", "Temperature")}°C`,
         feelTemp: `${minAT}°C ~ ${maxAT}°C`,
         rainProb: rainProb === "-" ? "尚無資料" : `${rainProb}%`,
-        humidity: `${getDetailValue(elements, "平均相對濕度", "RelativeHumidity")}%`,
-        comfort: getDetailValue(elements, "最大舒適度指數", "MaxComfortIndexDescription"),
+        humidity: `${getDetailValue(loc, "平均相對濕度", "RelativeHumidity")}%`,
+        comfort: getDetailValue(loc, "最大舒適度指數", "MaxComfortIndexDescription"),
         windSpeed: `${windSpeed} m/s（${beaufort} 級）`,
-        windDir: getDetailValue(elements, "風向", "WindDirection"),
-        detail: getDetailValue(elements, "天氣預報綜合描述", "WeatherDescription"),
-        isDetailed: true,
-    };
+        windDir: getDetailValue(loc, "風向", "WindDirection"),
+        detail: getDetailValue(loc, "天氣預報綜合描述", "WeatherDescription"),
+    }];
+
+    return { weatherList, isDetailed: true };
 }

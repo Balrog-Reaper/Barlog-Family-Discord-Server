@@ -18,8 +18,8 @@ export async function weather(msg, args) {
     }
 
     // 解析參數：第一個 = 國家，第二個(含之後) = 城市
-    const country = args[0];
-    const city = args.length > 1 ? args.slice(1).join(" ") : null;
+    const country = args[0].toLowerCase();
+    const city = args.length > 1 ? args.slice(1).join(" ").toLowerCase() : null;
 
     try {
         // 查詢天氣（路由器會根據國家分派至對應的 provider）
@@ -28,8 +28,8 @@ export async function weather(msg, args) {
         // 根據是否有指定城市，選擇不同的 Embed 格式
         if (weatherData.isDetailed) {
             // ─── 詳細模式：單一 Embed，不需要翻頁 ───
-            const embed = formatWeatherDetailEmbed(weatherData);
-            await msg.reply({ embeds: [embed] });
+            const embeds = formatWeatherDetailEmbed(weatherData.weatherList);
+            await msg.reply({ embeds: [embeds[0]] });
         } else {
             // ─── 總覽模式：按鈕翻頁 ───
             const embeds = formatWeatherOverviewEmbed(weatherData.weatherList);
@@ -41,7 +41,7 @@ export async function weather(msg, args) {
             }
 
             // 多頁 → 啟動翻頁機制
-            let currentPage = 0;
+            let currentPage = 1;
 
             // 建立翻頁按鈕的函式（每次翻頁都要更新按鈕的禁用狀態）
             function createButtons(page) {
@@ -50,28 +50,28 @@ export async function weather(msg, args) {
                         .setCustomId("weather_prev")
                         .setLabel("◀ 上一頁")
                         .setStyle(ButtonStyle.Primary)
-                        .setDisabled(page === 0),                  // 第一頁禁用
+                        .setDisabled(page === 1),                  // 第一頁禁用
                     new ButtonBuilder()
                         .setCustomId("weather_pageinfo")
-                        .setLabel(`${page + 1} / ${embeds.length}`)
+                        .setLabel(`${page} / ${embeds.length}`)
                         .setStyle(ButtonStyle.Secondary)
                         .setDisabled(true),                        // 頁碼顯示，不可點擊
                     new ButtonBuilder()
                         .setCustomId("weather_next")
                         .setLabel("下一頁 ▶")
                         .setStyle(ButtonStyle.Primary)
-                        .setDisabled(page === embeds.length - 1),  // 最後一頁禁用
+                        .setDisabled(page === embeds.length),  // 最後一頁禁用
                 );
             }
 
             // 發送第一頁 + 按鈕
             const replyMsg = await msg.reply({
-                embeds: [embeds[currentPage]],
+                embeds: [embeds[currentPage - 1]],      // 減 1 是因為陣列索引從 0 開始 
                 components: [createButtons(currentPage)],
             });
 
-            // 建立按鈕收集器（2 分鐘後過期）
-            const collector = replyMsg.createMessageComponentCollector({ time: 120000 });
+            // 建立按鈕收集器（10 分鐘後過期）
+            const collector = replyMsg.createMessageComponentCollector({ time: 600000 });
 
             collector.on("collect", async (interaction) => {
                 // 安全防護：只有下指令的人能翻頁
@@ -84,14 +84,14 @@ export async function weather(msg, args) {
 
                 // 根據按鈕更新頁碼
                 if (interaction.customId === "weather_prev") {
-                    currentPage = Math.max(currentPage - 1, 0);
+                    currentPage = Math.max(currentPage - 1, 1);
                 } else if (interaction.customId === "weather_next") {
-                    currentPage = Math.min(currentPage + 1, embeds.length - 1);
+                    currentPage = Math.min(currentPage + 1, embeds.length);
                 }
 
                 // 更新 Embed 和按鈕狀態
                 await interaction.update({
-                    embeds: [embeds[currentPage]],
+                    embeds: [embeds[currentPage - 1]],      // 減 1 是因為陣列索引從 0 開始
                     components: [createButtons(currentPage)],
                 });
             });

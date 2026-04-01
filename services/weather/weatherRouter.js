@@ -12,10 +12,8 @@ import { fetchTaiwanWeather, fetchTaiwanDetailWeather } from "./providers/taiwan
 // 國家別名對照表（第一層路由）
 // ───────────────────────────────────────────
 const COUNTRY_ALIASES = {
-    "台灣": "taiwan",
-    "臺灣": "taiwan",
-    "Taiwan": "taiwan",
-    "tw": "taiwan",
+    "taiwan": "taiwan", "台灣": "taiwan", "臺灣": "taiwan", "tw": "taiwan",
+
     // 未來擴充：
     // "日本": "japan", "Japan": "japan", "jp": "japan",
     // "美國": "usa", "USA": "usa", "us": "usa",
@@ -33,26 +31,28 @@ const TAIWAN_CITIES = [
 ];
 
 const TAIWAN_CITY_ALIASES = {
-    "台北": "臺北市", "臺北": "臺北市",
-    "新北": "新北市",
-    "桃園": "桃園市",
-    "台中": "臺中市", "臺中": "臺中市",
-    "台南": "臺南市", "臺南": "臺南市",
-    "高雄": "高雄市",
-    "基隆": "基隆市",
-    "新竹": "新竹市",  // 預設對應新竹市，新竹縣需明確指定
-    "苗栗": "苗栗縣",
-    "彰化": "彰化縣",
-    "南投": "南投縣",
-    "雲林": "雲林縣",
-    "嘉義": "嘉義市",  // 預設對應嘉義市
-    "屏東": "屏東縣",
-    "宜蘭": "宜蘭縣",
-    "花蓮": "花蓮縣",
-    "台東": "臺東縣", "臺東": "臺東縣",
-    "澎湖": "澎湖縣",
-    "金門": "金門縣",
-    "馬祖": "連江縣", "連江": "連江縣",
+    "台北": "臺北市", "臺北": "臺北市", "taipei": "臺北市",
+    "新北": "新北市", "new taipei": "新北市", "new taipei city": "新北市",
+    "桃園": "桃園市", "taoyuan": "桃園市",
+    "台中": "臺中市", "臺中": "臺中市", "taichung": "臺中市",
+    "台南": "臺南市", "臺南": "臺南市", "tainan": "臺南市",
+    "高雄": "高雄市", "kaohsiung": "高雄市",
+    "基隆": "基隆市", "keelung": "基隆市",
+    "新竹": "新竹市", "hsinchu": "新竹市",  // 預設對應新竹市，新竹縣需明確指定
+    "新竹縣": "新竹縣", "hsinchu county": "新竹縣",
+    "苗栗": "苗栗縣", "miaoli": "苗栗縣",
+    "彰化": "彰化縣", "changhua": "彰化縣",
+    "南投": "南投縣", "nantou": "南投縣",
+    "雲林": "雲林縣", "yunlin": "雲林縣",
+    "嘉義": "嘉義市", "chiayi": "嘉義市",  // 預設對應嘉義市
+    "嘉義縣": "嘉義縣", "chiayi county": "嘉義縣",
+    "屏東": "屏東縣", "pingtung": "屏東縣",
+    "宜蘭": "宜蘭縣", "yilan": "宜蘭縣",
+    "花蓮": "花蓮縣", "hualien": "花蓮縣",
+    "台東": "臺東縣", "臺東": "臺東縣", "taitung": "臺東縣",
+    "澎湖": "澎湖縣", "penghu": "澎湖縣",
+    "金門": "金門縣", "kinmen": "金門縣",
+    "馬祖": "連江縣", "連江": "連江縣", "matsu": "連江縣", "lienchiang": "連江縣",
 };
 
 
@@ -64,8 +64,9 @@ const providers = {
         overview: fetchTaiwanWeather,           // 無城市 → 全台總覽
         detail: fetchTaiwanDetailWeather,       // 有城市 → 詳細模式
         resolveCity: (input) => {               // 城市名稱解析器
-            return TAIWAN_CITY_ALIASES[input]
-                || TAIWAN_CITIES.find(c => c.includes(input))
+            const lowerInput = input.toLowerCase();
+            return TAIWAN_CITY_ALIASES[lowerInput]
+                || TAIWAN_CITIES.find(city => city.includes(input))
                 || null;
         },
         displayName: "台灣",
@@ -88,7 +89,9 @@ const providers = {
  */
 export async function queryWeather(country, city) {
 
+    // ───────────────────────────────────────────
     // 第一層：解析國家 → 找到對應的 provider
+    // ───────────────────────────────────────────
     const countryKey = COUNTRY_ALIASES[country];
     if (!countryKey || !providers[countryKey]) {
         const supported = Object.values(providers).map(p => p.displayName).join("、");
@@ -97,17 +100,24 @@ export async function queryWeather(country, city) {
 
     const provider = providers[countryKey];
 
+
+    // ───────────────────────────────────────────
     // 第二層：判斷是否有指定城市
+    // ───────────────────────────────────────────
+
+    // 無城市 → 呼叫該國的總覽函式
     if (!city) {
-        // 無城市 → 呼叫該國的總覽函式
         return await provider.overview();
     }
 
     // 有城市 → 解析城市名稱，再呼叫詳細函式
-    const resolvedCity = provider.resolveCity(city);
-    if (!resolvedCity) {
-        throw new Error(`在${provider.displayName}中找不到「${city}」，請確認城市名稱是否正確。`);
+    if (city) {
+        const resolvedCity = provider.resolveCity(city);
+        if (!resolvedCity) {
+            throw new Error(`在${provider.displayName}中找不到「${city}」，請確認城市名稱是否正確。`);
+        }
+
+        return await provider.detail(resolvedCity);
     }
 
-    return await provider.detail(resolvedCity);
 }
